@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1.0">
+        <link rel="stylesheet" href="style.css">
+        <title>Summary</title> 
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+    <body>
+        <header>
+            <a href="index.html"><button class="button" style="margin-left: 75%;">Index</button></a>
+            <a href="summary.html"><button class="button" style="margin-left: 2%;">Summary</button></a>
+        </header>
+        <div class="class1">
+            <form id="incomeform">
+                <label for="income">Income: </label><input type="number" id="income" placeholder=" Enter Once"><br><br>
+                <button type="submit">Submit</button>
+            </form>
+            <h3 id="incomeT">Total Income: </h3>
+            <h3 id="expanse">Total Expanse: </h3>
+            <h3 id="balance">Balance: </h3>
+        </div>
+        <div class="class1">
+            <canvas id="expanseChart" width="400" height="200"></canvas>
+        </div>
+        <script src="script.js"></script>
+    </body>
+</html>
