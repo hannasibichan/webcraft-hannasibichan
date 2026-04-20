@@ -1,180 +1,200 @@
+/* ════════════════════════════════════════
+   SpendSmart — script.js
+   Works with both index.html (dashboard)
+   and summary.html (analytics)
+   ════════════════════════════════════════ */
+
 let Totalexpense = 0;
 let totalincome = parseFloat(localStorage.getItem('totalincome')) || 0;
 let Totalbalance = 0;
 
 // DOM elements
-const incomeT = document.getElementById('incomeT');
-const expanse = document.getElementById('expanse');
-const balance = document.getElementById('balance');
+const incomeT   = document.getElementById('incomeT');
+const expanse   = document.getElementById('expanse');
+const balance   = document.getElementById('balance');
 const incomeform = document.getElementById('incomeform');
-const form = document.getElementById('expanseform');
-const table = document.getElementById('expansetable');
-const clearBtn = document.getElementById('clearTable');
+const form      = document.getElementById('expanseform');
+// Support both old (#expansetable) and new (#table-body) structures
+const tableBody = document.getElementById('table-body') || document.getElementById('expansetable');
+const clearBtn  = document.getElementById('clearTable');
 
-// Chart variables
+// Chart vars (summary page)
 let expenseLabels = [];
-let expenseData = [];
+let expenseData   = [];
+let chartContext  = null;
+let expenseChart  = null;
 
-let chartContext = null;
-let expenseChart = null;
-
-// 🧮 Update totals on screen
+// ── Update summary numbers ──
 function updateSummary() {
-  if (incomeT) incomeT.textContent = "Total Income: Rs. " + totalincome.toFixed(2);
-  if (expanse) expanse.textContent = "Total Expense: Rs. " + Totalexpense.toFixed(2);
-  Totalbalance = totalincome - Totalexpense;
-  localStorage.setItem('totalbalance', Totalbalance);
-  if (balance) balance.textContent = "Total Balance: Rs. " + Totalbalance.toFixed(2);
+    if (incomeT) incomeT.textContent = 'Rs. ' + totalincome.toFixed(2);
+    if (expanse) expanse.textContent = 'Rs. ' + Totalexpense.toFixed(2);
+    Totalbalance = totalincome - Totalexpense;
+    localStorage.setItem('totalbalance', Totalbalance);
+    if (balance) balance.textContent = 'Rs. ' + Totalbalance.toFixed(2);
 }
 
-// 📊 Update chart based on localStorage
-function updateChartFromStorage() {
-  const expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-  const categoryTotals = {};
-
-  expenses.forEach(entry => {
-    const category = entry.item || 'Other';
-    if (!categoryTotals[category]) {
-      categoryTotals[category] = 0;
-    }
-    categoryTotals[category] += parseFloat(entry.price);
-  });
-
-  if (expenseChart) {
-    expenseChart.data.labels = Object.keys(categoryTotals);
-    expenseChart.data.datasets[0].data = Object.values(categoryTotals);
-    expenseChart.update();
-  }
-}
-
-// 💰 Income submission
-if (incomeform) {
-  incomeform.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const incomevalue = parseFloat(document.getElementById('income').value);
-    if (!isNaN(incomevalue)) {
-      totalincome = incomevalue;
-      localStorage.setItem('totalincome', totalincome);
-      updateSummary();
-      incomeform.reset();
-    }
-  });
-}
-
-// 💸 Expense submission
-if (form && table) {
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    const date = document.getElementById('date').value;
-    const item = document.getElementById('item').value;
-    const price = parseFloat(document.getElementById('price').value);
-    if (isNaN(price)) return;
-
-    const newRow = table.insertRow(-1);
-    newRow.innerHTML = `
-      <td>${date}</td>
-      <td>${item}</td>
-      <td>${price}</td>
-      <td><button class="delete-btn">x</button></td>
+// ── Build a table row ──
+function buildRow(date, item, price) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>${date}</td>
+        <td>${item}</td>
+        <td>Rs. ${parseFloat(price).toFixed(2)}</td>
+        <td><button class="delete-btn" title="Delete">✕</button></td>
     `;
-
-    let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-    expenses.push({ date, item, price });
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-
-    Totalexpense += price;
-    localStorage.setItem('totalexpense', Totalexpense);
-    updateSummary();
-    updateChartFromStorage();
-    form.reset();
-  });
+    return tr;
 }
 
-// 🗑 Delete expense row
-if (table) {
-  table.addEventListener('click', function (e) {
-    if (e.target && e.target.classList.contains('delete-btn')) {
-      const row = e.target.closest('tr');
-      const price = parseFloat(row.cells[2].textContent);
-      const item = row.cells[1].textContent;
-      const date = row.cells[0].textContent;
-
-      let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-      expenses = expenses.filter(
-        exp => !(exp.date === date && exp.item === item && exp.price == price)
-      );
-      localStorage.setItem('expenses', JSON.stringify(expenses));
-
-      Totalexpense -= price;
-      localStorage.setItem('totalexpense', Totalexpense);
-      row.remove();
-      updateSummary();
-      updateChartFromStorage();
-    }
-  });
-}
-
-// 🧹 Clear entire table and storage
-if (clearBtn && table) {
-  clearBtn.addEventListener('click', function () {
-    while (table.rows.length > 1) {
-      table.deleteRow(1);
-    }
-    localStorage.removeItem('expenses');
-    Totalexpense = 0;
-    localStorage.setItem('totalexpense', 0);
-    updateSummary();
-    updateChartFromStorage();
-  });
-}
-
-// 📦 On page load: load table and chart
-window.onload = function () {
-  const expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-
-  // Load expense table
-  if (table) {
+// ── Chart update ──
+function updateChartFromStorage() {
+    const expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+    const categoryTotals = {};
     expenses.forEach(entry => {
-      const newRow = table.insertRow(-1);
-      newRow.innerHTML = `
-        <td>${entry.date}</td>
-        <td>${entry.item}</td>
-        <td>${entry.price}</td>
-        <td><button class="delete-btn">x</button></td>
-      `;
-      Totalexpense += parseFloat(entry.price);
+        const cat = entry.item || 'Other';
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + parseFloat(entry.price);
     });
-  } else {
-    Totalexpense = parseFloat(localStorage.getItem('totalexpense')) || 0;
-  }
+    if (expenseChart) {
+        expenseChart.data.labels = Object.keys(categoryTotals);
+        expenseChart.data.datasets[0].data = Object.values(categoryTotals);
+        expenseChart.update();
+    }
+    // expose globally so summary.html can style it
+    window.expenseChart = expenseChart;
+}
 
-  updateSummary();
-
-  // Initialize chart if canvas is present
-  const chartCanvas = document.getElementById('expanseChart');
-  if (chartCanvas) {
-    chartContext = chartCanvas.getContext('2d');
-    expenseChart = new Chart(chartContext, {
-      type: 'bar',
-      data: {
-        labels: expenseLabels,
-        datasets: [{
-          label: 'Expenses by Category',
-          data: expenseData,
-          backgroundColor: '#FF6384',
-          borderColor: '#FF4C68',
-          borderWidth: 1
-        }]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
+// ── Income form ──
+if (incomeform) {
+    incomeform.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const val = parseFloat(document.getElementById('income').value);
+        if (!isNaN(val) && val >= 0) {
+            totalincome = val;
+            localStorage.setItem('totalincome', totalincome);
+            updateSummary();
+            incomeform.reset();
         }
-      }
     });
+}
 
-    updateChartFromStorage(); // after chart is created
-  }
+// ── Expense form ──
+if (form && tableBody) {
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const date  = document.getElementById('date').value;
+        const item  = document.getElementById('item').value.trim();
+        const price = parseFloat(document.getElementById('price').value);
+        if (!date || !item || isNaN(price) || price < 0) return;
+
+        tableBody.appendChild(buildRow(date, item, price));
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        expenses.push({ date, item, price });
+        localStorage.setItem('expenses', JSON.stringify(expenses));
+
+        Totalexpense += price;
+        localStorage.setItem('totalexpense', Totalexpense);
+        updateSummary();
+        updateChartFromStorage();
+        form.reset();
+    });
+}
+
+// ── Delete row (event delegation) ──
+if (tableBody) {
+    tableBody.addEventListener('click', function (e) {
+        if (!e.target.classList.contains('delete-btn')) return;
+        const row   = e.target.closest('tr');
+        // price is in td[2], strip "Rs. " prefix
+        const price = parseFloat(row.cells[2].textContent.replace(/[^0-9.-]/g, ''));
+        const item  = row.cells[1].textContent;
+        const date  = row.cells[0].textContent;
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        expenses = expenses.filter(exp =>
+            !(exp.date === date && exp.item === item && parseFloat(exp.price) === price)
+        );
+        localStorage.setItem('expenses', JSON.stringify(expenses));
+
+        Totalexpense -= price;
+        if (Totalexpense < 0) Totalexpense = 0;
+        localStorage.setItem('totalexpense', Totalexpense);
+        row.remove();
+        updateSummary();
+        updateChartFromStorage();
+    });
+}
+
+// ── Clear all ──
+if (clearBtn && tableBody) {
+    clearBtn.addEventListener('click', function () {
+        if (!confirm('Clear all expense records? This cannot be undone.')) return;
+        tableBody.innerHTML = '';
+        localStorage.removeItem('expenses');
+        Totalexpense = 0;
+        localStorage.setItem('totalexpense', 0);
+        updateSummary();
+        updateChartFromStorage();
+    });
+}
+
+// ── On page load ──
+window.onload = function () {
+    const expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+
+    if (tableBody) {
+        // Clear existing rows (except header if it's a <table> not <tbody>)
+        if (tableBody.tagName === 'TBODY') {
+            tableBody.innerHTML = '';
+        }
+        expenses.forEach(entry => {
+            tableBody.appendChild(buildRow(entry.date, entry.item, entry.price));
+            Totalexpense += parseFloat(entry.price);
+        });
+    } else {
+        Totalexpense = parseFloat(localStorage.getItem('totalexpense')) || 0;
+    }
+
+    updateSummary();
+
+    // Chart (summary page)
+    // Chart (summary page)
+    const chartCanvas = document.getElementById('expanseChart');
+    if (chartCanvas) {
+        chartContext = chartCanvas.getContext('2d');
+        expenseChart = new Chart(chartContext, {
+            type: 'bar',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Category Spend',
+                    data: [],
+                    backgroundColor: ['#3b82f6','#10d98e','#f43f5e','#f59e0b','#a78bfa','#06d6a0','#fb7185'],
+                    borderRadius: 6,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#6b7a9e', font: { family: 'JetBrains Mono', size: 12 } }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#6b7a9e', font: { family: 'JetBrains Mono' } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#6b7a9e', font: { family: 'JetBrains Mono' } }
+                    }
+                }
+            }
+        });
+        window.expenseChart = expenseChart;
+        updateChartFromStorage();
+    }
 };
