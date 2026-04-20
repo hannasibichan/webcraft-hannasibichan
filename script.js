@@ -9,20 +9,20 @@ let totalincome = parseFloat(localStorage.getItem('totalincome')) || 0;
 let Totalbalance = 0;
 
 // DOM elements
-const incomeT   = document.getElementById('incomeT');
-const expanse   = document.getElementById('expanse');
-const balance   = document.getElementById('balance');
+const incomeT = document.getElementById('incomeT');
+const expanse = document.getElementById('expanse');
+const balance = document.getElementById('balance');
 const incomeform = document.getElementById('incomeform');
-const form      = document.getElementById('expanseform');
+const form = document.getElementById('expanseform');
 // Support both old (#expansetable) and new (#table-body) structures
 const tableBody = document.getElementById('table-body') || document.getElementById('expansetable');
-const clearBtn  = document.getElementById('clearTable');
+const clearBtn = document.getElementById('clearTable');
 
 // Chart vars (summary page)
 let expenseLabels = [];
-let expenseData   = [];
-let chartContext  = null;
-let expenseChart  = null;
+let expenseData = [];
+let chartContext = null;
+let expenseChart = null;
 
 // ── Update summary numbers ──
 function updateSummary() {
@@ -80,8 +80,8 @@ if (incomeform) {
 if (form && tableBody) {
     form.addEventListener('submit', function (e) {
         e.preventDefault();
-        const date  = document.getElementById('date').value;
-        const item  = document.getElementById('item').value.trim();
+        const date = document.getElementById('date').value;
+        const item = document.getElementById('item').value.trim();
         const price = parseFloat(document.getElementById('price').value);
         if (!date || !item || isNaN(price) || price < 0) return;
 
@@ -103,11 +103,11 @@ if (form && tableBody) {
 if (tableBody) {
     tableBody.addEventListener('click', function (e) {
         if (!e.target.classList.contains('delete-btn')) return;
-        const row   = e.target.closest('tr');
+        const row = e.target.closest('tr');
         // price is in td[2], strip "Rs. " prefix
         const price = parseFloat(row.cells[2].textContent.replace(/[^0-9.-]/g, ''));
-        const item  = row.cells[1].textContent;
-        const date  = row.cells[0].textContent;
+        const item = row.cells[1].textContent;
+        const date = row.cells[0].textContent;
 
         let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
         expenses = expenses.filter(exp =>
@@ -168,7 +168,7 @@ window.onload = function () {
                 datasets: [{
                     label: 'Category Spend',
                     data: [],
-                    backgroundColor: ['#3b82f6','#10d98e','#f43f5e','#f59e0b','#a78bfa','#06d6a0','#fb7185'],
+                    backgroundColor: ['#3b82f6', '#10d98e', '#f43f5e', '#f59e0b', '#a78bfa', '#06d6a0', '#fb7185'],
                     borderRadius: 6,
                     borderWidth: 0
                 }]
